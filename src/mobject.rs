@@ -85,6 +85,12 @@ impl Mobject {
         }
     }
 
+    /// Build a mobject directly from raw subpaths (used by coordinate systems
+    /// and anyone constructing custom geometry).
+    pub fn from_subpaths(paths: Vec<SubPath>) -> Self {
+        Self::from_paths(paths)
+    }
+
     // ---- Constructors ---------------------------------------------------
 
     /// A circle of the given radius, centered at the origin (outline only).

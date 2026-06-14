@@ -25,6 +25,7 @@
 
 pub mod animation;
 pub mod color;
+pub mod coordinate;
 pub mod font;
 pub mod geometry;
 pub mod mobject;
@@ -46,6 +47,7 @@ pub mod prelude {
         Color, BLACK, BLUE, BROWN, DARK_BG, GOLD, GREEN, GREY, MAGENTA, MAROON, ORANGE, PINK,
         PURPLE, RED, TEAL, WHITE, YELLOW,
     };
+    pub use crate::coordinate::{Axes, Range};
     pub use crate::geometry::{v, Rate, Vec2, DL, DOWN, DR, F, LEFT, ORIGIN, RIGHT, UL, UP, UR};
     pub use crate::mobject::Mobject;
     pub use crate::render::Camera;

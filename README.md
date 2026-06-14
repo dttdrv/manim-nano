@@ -2,6 +2,8 @@
 
 A tiny, fast, **runs-everywhere** animation engine inspired by 3Blue1Brown's [Manim](https://github.com/3b1b/manim) — with a plain-English frontend.
 
+📚 See [MANIM.md](MANIM.md) for what Manim is, what it does best, and how manim-nano honors it.
+
 ## Why manim-nano?
 
 - **Fast** — written in Rust and rendered entirely on the CPU with [`tiny-skia`](https://crates.io/crates/tiny-skia), a pure-Rust rasterizer. No system dependencies, no GPU required.
@@ -122,6 +124,7 @@ The natural-language frontend is a deterministic, offline parser. Call it from t
 - **Grow / enlarge / expand** and **shrink / contract** (`scale up` / `scale down`).
 - **Rotate / spin / turn** — optionally **N degrees**, optionally `counterclockwise`.
 - **Make / turn / color it `<color>`** to recolor.
+- **Plot / graph** a function — `sine` (`wave`), `cosine`, `tangent`, `parabola` (`quadratic`), `cubic`, or `exponential` — drawn on axes with a faint grid (the 3Blue1Brown-style graph). Add a color word to recolor the curve.
 - **Wait N** (or `pause N`) to hold for N seconds.
 
 **Connectors:**
@@ -149,6 +152,10 @@ Write "MANIM NANO", then move it up, then wait 1.
 
 ```text
 Draw a #ff8800 triangle, spin it counterclockwise, then make it teal.
+```
+
+```text
+Plot a sine wave.
 ```
 
 When the parser recognizes nothing, it falls back to showing your request as on-screen text — so you always get a result.

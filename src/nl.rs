@@ -1,11 +1,13 @@
 //! Natural-language frontend: turn an English description into an animated
-//! [`Scene`]. This is the deterministic, offline interpreter — no network, no
-//! API key. (An optional Claude-powered path lives behind the `ai` feature.)
+//! [`Scene`]. Fully deterministic and offline — no network, no API, no key.
 //!
-//! Example: `"Draw a red circle, then move it right while a blue square fades in."`
+//! Examples:
+//! - `"Draw a red circle, then move it right while a blue square fades in."`
+//! - `"Plot a sine wave"` / `"Graph a parabola"`
 
 use crate::animation::*;
 use crate::color::{Color, BLUE, WHITE};
+use crate::coordinate::{Axes, Range};
 use crate::geometry::{Rate, Vec2, DOWN, F, LEFT, ORIGIN, RIGHT, UP};
 use crate::mobject::Mobject;
 use crate::scene::Scene;
@@ -99,6 +101,11 @@ fn parse_clause(clause: &str, scene: &mut Scene, ctx: &mut Ctx) -> (Vec<AnimSpec
     let words: Vec<&str> = clause.split_whitespace().collect();
     if words.is_empty() {
         return (vec![], 1.0, false);
+    }
+
+    // graphing: "plot/graph a sine wave", "graph a parabola" — what Manim is loved for.
+    if let Some(specs) = try_graph(clause, &words, scene, ctx) {
+        return (specs, 1.6, false);
     }
 
     // wait / pause
@@ -374,6 +381,110 @@ fn extract_text(clause: &str) -> String {
 fn to_caption(text: &str) -> String {
     let t: String = text.trim().chars().take(40).collect();
     t.to_uppercase()
+}
+
+// ---- Graphing (the marquee Manim capability) ----------------------------
+
+fn parabola(x: F) -> F {
+    x * x
+}
+fn cubic(x: F) -> F {
+    x * x * x
+}
+fn sine(x: F) -> F {
+    x.sin()
+}
+fn cosine(x: F) -> F {
+    x.cos()
+}
+fn tangent(x: F) -> F {
+    x.tan()
+}
+fn expo(x: F) -> F {
+    x.exp()
+}
+
+fn mentions_function(words: &[&str]) -> bool {
+    const FNS: &[&str] = &[
+        "sine",
+        "sin",
+        "cosine",
+        "cos",
+        "tangent",
+        "tan",
+        "parabola",
+        "quadratic",
+        "cubic",
+        "exponential",
+        "exp",
+        "wave",
+    ];
+    words.iter().any(|w| FNS.contains(&strip(w)))
+}
+
+/// Pick a function and sensible axis ranges from the words.
+fn pick_function(words: &[&str]) -> (fn(F) -> F, Range, Range) {
+    let trig_x = Range::new(-6.5, 6.5, 1.0);
+    for w in words {
+        match strip(w) {
+            "sine" | "sin" | "wave" => return (sine, trig_x, Range::new(-2.0, 2.0, 1.0)),
+            "cosine" | "cos" => return (cosine, trig_x, Range::new(-2.0, 2.0, 1.0)),
+            "tangent" | "tan" => {
+                return (
+                    tangent,
+                    Range::new(-4.5, 4.5, 1.0),
+                    Range::new(-4.0, 4.0, 1.0),
+                )
+            }
+            "parabola" | "quadratic" => {
+                return (
+                    parabola,
+                    Range::new(-3.0, 3.0, 1.0),
+                    Range::new(-1.0, 9.0, 1.0),
+                )
+            }
+            "cubic" => {
+                return (
+                    cubic,
+                    Range::new(-2.2, 2.2, 1.0),
+                    Range::new(-9.0, 9.0, 3.0),
+                )
+            }
+            "exponential" | "exp" => {
+                return (expo, Range::new(-3.0, 2.0, 1.0), Range::new(-1.0, 8.0, 1.0))
+            }
+            _ => {}
+        }
+    }
+    // Default graph: a sine wave.
+    (sine, trig_x, Range::new(-2.0, 2.0, 1.0))
+}
+
+fn try_graph(
+    _clause: &str,
+    words: &[&str],
+    scene: &mut Scene,
+    ctx: &mut Ctx,
+) -> Option<Vec<AnimSpec>> {
+    if !(has(words, &["plot", "graph", "function"]) || mentions_function(words)) {
+        return None;
+    }
+    let (f, x, y) = pick_function(words);
+    let ax = Axes::new(x, y).lengths(11.0, 6.0).centered_at(ORIGIN);
+
+    let grid = scene.add(ax.grid_mobject());
+    let axes_id = scene.add(ax.axes_mobject());
+    let mut curve = ax.plot(f);
+    if let Some(c) = find_color(words) {
+        curve.set_color(c);
+    }
+    let curve_id = scene.add(curve);
+
+    ctx.created += 3;
+    ctx.last = Some(curve_id);
+    ctx.last_center = ax.center;
+
+    Some(vec![create(grid), create(axes_id), create(curve_id)])
 }
 
 #[cfg(test)]

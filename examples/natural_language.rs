@@ -11,7 +11,9 @@ fn main() {
 
     let mut scene = nl::interpret(description);
 
-    scene.export("natural_language").expect("export natural_language");
+    scene
+        .export("natural_language")
+        .expect("export natural_language");
     println!(
         "wrote natural_language.gif ({} frames)",
         scene.frame_count()
