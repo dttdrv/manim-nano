@@ -32,6 +32,10 @@ pub mod nl;
 pub mod render;
 pub mod scene;
 
+/// Browser (WebAssembly) bindings — compiled only with the `wasm` feature.
+#[cfg(feature = "wasm")]
+pub mod wasm;
+
 /// Everything you need in one glob import.
 pub mod prelude {
     pub use crate::animation::{

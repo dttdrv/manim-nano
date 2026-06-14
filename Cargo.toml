@@ -12,6 +12,9 @@ categories = ["multimedia", "graphics", "wasm"]
 [lib]
 name = "manim_nano"
 path = "src/lib.rs"
+# `cdylib` is needed to produce a `.wasm` artifact; `rlib` keeps the binary
+# and the test/doc-test harness linking against the crate natively.
+crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 name = "manim"
@@ -22,6 +25,15 @@ path = "src/main.rs"
 tiny-skia = "0.11"   # pure-Rust CPU rasterizer (compiles to native + WASM)
 gif = "0.13"         # animated GIF output that plays everywhere
 font8x8 = "0.3"      # embedded bitmap font so text needs no system fonts
+
+# WASM browser bindings — only pulled in when the `wasm` feature is enabled,
+# so the native build/test/clippy paths never touch them.
+wasm-bindgen = { version = "0.2", optional = true }
+
+[features]
+default = []
+# Enable the browser (WebAssembly) entry points in `src/wasm.rs`.
+wasm = ["dep:wasm-bindgen"]
 
 [profile.release]
 opt-level = 3

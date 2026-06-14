@@ -165,13 +165,13 @@ impl Scene {
 
     // ---- Exporters ------------------------------------------------------
 
-    /// Write the animation as a looping GIF (plays in every browser & viewer).
-    pub fn save_gif(&mut self, path: impl AsRef<Path>) -> io::Result<()> {
+    /// Encode the animation as a looping GIF into any [`io::Write`] sink.
+    ///
+    /// Shared by [`Scene::save_gif`] (file output) and the WASM entry point
+    /// (in-memory `Vec<u8>` output), so both produce identical bytes.
+    fn write_gif<W: io::Write>(&mut self, writer: W) -> io::Result<()> {
         self.ensure_frames();
         let (w, h) = (self.cam.width as u16, self.cam.height as u16);
-        create_parent(path.as_ref())?;
-        let file = std::fs::File::create(path)?;
-        let writer = io::BufWriter::new(file);
         let mut encoder = gif::Encoder::new(writer, w, h, &[]).map_err(io::Error::other)?;
         encoder
             .set_repeat(gif::Repeat::Infinite)
@@ -184,6 +184,23 @@ impl Scene {
             encoder.write_frame(&frame).map_err(io::Error::other)?;
         }
         Ok(())
+    }
+
+    /// Encode the animation as a looping GIF into an in-memory buffer.
+    ///
+    /// Handy where there is no filesystem — e.g. returning the bytes to the
+    /// browser from WebAssembly.
+    pub fn encode_gif(&mut self) -> io::Result<Vec<u8>> {
+        let mut buf: Vec<u8> = Vec::new();
+        self.write_gif(io::Cursor::new(&mut buf))?;
+        Ok(buf)
+    }
+
+    /// Write the animation as a looping GIF (plays in every browser & viewer).
+    pub fn save_gif(&mut self, path: impl AsRef<Path>) -> io::Result<()> {
+        create_parent(path.as_ref())?;
+        let file = std::fs::File::create(path)?;
+        self.write_gif(io::BufWriter::new(file))
     }
 
     /// Write every frame as a numbered PNG into `dir`.

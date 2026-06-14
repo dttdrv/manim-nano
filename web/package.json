@@ -1,0 +1,15 @@
+{
+  "name": "manim-nano-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser demo for manim-nano — renders English to an animated GIF entirely in-browser via WebAssembly.",
+  "type": "module",
+  "scripts": {
+    "build:wasm": "wasm-pack build .. --target web --features wasm --out-dir web/pkg",
+    "typecheck": "tsc --noEmit",
+    "serve": "python3 -m http.server 8080"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
