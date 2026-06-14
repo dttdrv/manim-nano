@@ -311,6 +311,16 @@ impl Mobject {
         self.rotate_about(angle, c)
     }
 
+    /// Apply a 2x2 linear map `m = [[a, b], [c, d]]` about a point — the basis
+    /// of "Essence of Linear Algebra"-style grid transforms.
+    pub fn apply_matrix(&mut self, m: [[F; 2]; 2], about: Vec2) -> &mut Self {
+        self.for_each_point(|p| {
+            let d = p - about;
+            about + Vec2::new(m[0][0] * d.x + m[0][1] * d.y, m[1][0] * d.x + m[1][1] * d.y)
+        });
+        self
+    }
+
     /// Move so this object's edge sits against the frame edge in `direction`.
     /// `frame` is `(half_width, half_height)` of the camera in world units.
     pub fn to_edge(&mut self, direction: Vec2, frame: (F, F), buff: F) -> &mut Self {
@@ -390,5 +400,19 @@ mod tests {
         let t = Mobject::text("HI", 1.0);
         assert!(!t.paths.is_empty());
         assert!(t.style.fill.is_some());
+    }
+
+    #[test]
+    fn apply_matrix_shear_and_identity() {
+        // A 90-degree rotation matrix sends (1,0) -> (0,1).
+        let mut p = Mobject::dot(v(1.0, 0.0), 0.0);
+        p.apply_matrix([[0.0, -1.0], [1.0, 0.0]], Vec2::ZERO);
+        assert!((p.center() - v(0.0, 1.0)).length() < 1e-9);
+
+        // Identity leaves a shape unchanged.
+        let mut s = Mobject::square(2.0);
+        let before = s.center();
+        s.apply_matrix([[1.0, 0.0], [0.0, 1.0]], Vec2::ZERO);
+        assert!((s.center() - before).length() < 1e-9);
     }
 }

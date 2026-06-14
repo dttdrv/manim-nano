@@ -6,7 +6,7 @@
 //! - `"Plot a sine wave"` / `"Graph a parabola"`
 
 use crate::animation::*;
-use crate::color::{Color, BLUE, GREEN, WHITE};
+use crate::color::{Color, BLUE, GREEN, RED, WHITE};
 use crate::coordinate::{Axes, Range};
 use crate::geometry::{Rate, Vec2, DOWN, F, LEFT, ORIGIN, RIGHT, UP};
 use crate::mobject::Mobject;
@@ -36,6 +36,11 @@ pub fn interpret(text: &str) -> Scene {
 pub fn interpret_into(text: &str, mut scene: Scene) -> Scene {
     let mut ctx = Ctx::default();
     for sentence in split_sentences(text) {
+        // "Essence of Linear Algebra"-style grid transforms are driven by
+        // updaters, so they sidestep the per-clause spec pipeline.
+        if try_linear_transform(&sentence, &mut scene) {
+            continue;
+        }
         let parts = split_parallel(&sentence);
         let mut group: Vec<AnimSpec> = Vec::new();
         let mut run_time: F = 1.0;
@@ -508,6 +513,102 @@ fn try_graph(
     Some(specs)
 }
 
+// ---- Linear transformations (Essence of Linear Algebra) -----------------
+
+type Mat = [[F; 2]; 2];
+const IDENTITY: Mat = [[1.0, 0.0], [0.0, 1.0]];
+
+fn lerp_mat(a: Mat, b: Mat, t: F) -> Mat {
+    let l = |x: F, y: F| x + (y - x) * t;
+    [
+        [l(a[0][0], b[0][0]), l(a[0][1], b[0][1])],
+        [l(a[1][0], b[1][0]), l(a[1][1], b[1][1])],
+    ]
+}
+
+fn pick_matrix(sentence: &str, words: &[&str]) -> Mat {
+    if sentence.contains("shear") {
+        return [[1.0, 1.0], [0.0, 1.0]];
+    }
+    if has(words, &["reflect", "flip", "mirror"]) {
+        return [[1.0, 0.0], [0.0, -1.0]];
+    }
+    if has(words, &["squish", "squash"]) {
+        return [[1.7, 0.0], [0.0, 0.55]];
+    }
+    if has(words, &["scale", "stretch", "enlarge"]) {
+        return [[1.6, 0.0], [0.0, 1.6]];
+    }
+    if has(words, &["rotate", "rotation", "spin", "turn"]) {
+        let r = find_number(words).unwrap_or(90.0) * PI / 180.0;
+        return [[r.cos(), -r.sin()], [r.sin(), r.cos()]];
+    }
+    [[1.0, 1.0], [0.0, 1.0]] // default: the classic shear
+}
+
+/// Animate a 2x2 linear map on a coordinate grid + basis vectors. Returns
+/// `true` if the sentence asked for one (so the caller skips normal parsing).
+fn try_linear_transform(sentence: &str, scene: &mut Scene) -> bool {
+    let s = sentence;
+    let mentions = s.contains("linear transform")
+        || s.contains("matrix")
+        || s.contains("shear")
+        || ((s.contains("transform") || s.contains("apply"))
+            && (s.contains("grid") || s.contains("plane") || s.contains("space")));
+    if !mentions {
+        return false;
+    }
+    let words: Vec<&str> = s.split_whitespace().collect();
+    let m = pick_matrix(s, &words);
+
+    // A 1:1 data-to-world plane, so the matrix acts directly in world space.
+    let ax = Axes::new(Range::new(-7.0, 7.0, 1.0), Range::new(-4.0, 4.0, 1.0)).lengths(14.0, 8.0);
+    let grid0 = ax.grid_mobject();
+    let mut i0 = Mobject::arrow(ORIGIN, Vec2::new(1.0, 0.0));
+    i0.set_color(GREEN);
+    let mut j0 = Mobject::arrow(ORIGIN, Vec2::new(0.0, 1.0));
+    j0.set_color(RED);
+
+    let grid_id = scene.add(grid0.clone());
+    let i_id = scene.add(i0.clone());
+    let j_id = scene.add(j0.clone());
+    scene.play_all(&[create(grid_id), create(i_id), create(j_id)], 1.0);
+
+    let about = ORIGIN;
+    scene.play_updaters(
+        2.2,
+        Rate::Smooth,
+        vec![
+            (
+                grid_id,
+                Box::new(move |a| {
+                    let mut g = grid0.clone();
+                    g.apply_matrix(lerp_mat(IDENTITY, m, a), about);
+                    g
+                }),
+            ),
+            (
+                i_id,
+                Box::new(move |a| {
+                    let mut v = i0.clone();
+                    v.apply_matrix(lerp_mat(IDENTITY, m, a), about);
+                    v
+                }),
+            ),
+            (
+                j_id,
+                Box::new(move |a| {
+                    let mut v = j0.clone();
+                    v.apply_matrix(lerp_mat(IDENTITY, m, a), about);
+                    v
+                }),
+            ),
+        ],
+    );
+    scene.wait(0.6);
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -537,5 +638,19 @@ mod tests {
         let before = a.frame_count();
         a = interpret("draw a square. wait 1");
         assert!(a.frame_count() > before);
+    }
+
+    #[test]
+    fn graphs_and_calculus() {
+        assert!(interpret("plot a sine wave").frame_count() > 0);
+        assert!(interpret("graph a parabola with riemann rectangles").frame_count() > 0);
+        assert!(interpret("show the area under a cosine wave").frame_count() > 0);
+    }
+
+    #[test]
+    fn linear_transformations() {
+        assert!(interpret("apply a shear to the grid").frame_count() > 0);
+        assert!(interpret("apply a matrix that rotates the plane 90 degrees").frame_count() > 0);
+        assert!(interpret("reflect the plane").frame_count() > 0);
     }
 }

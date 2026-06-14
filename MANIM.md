@@ -185,7 +185,7 @@ prelude and the README):
 | `Axes` + graphing `f(x)` (`get_graph`/`plot`) | **Supported** | `Axes` with `coords_to_point`, `plot(function)`, `plot_parametric`, and numeric tick labels. |
 | Calculus visuals (Riemann rectangles, area, tangent) | **Supported** | `Axes::riemann_rectangles`, `area_under`, `tangent_line`, `point_at_x`. |
 | `NumberPlane`-style grid | **Supported** | `Axes::grid_mobject()` draws the faint coordinate grid. |
-| Matrix / linear transforms of a grid | **Planned** | `apply_matrix` not yet present. |
+| Matrix / linear transforms of a grid | **Supported** | `Mobject::apply_matrix` + updaters morph a grid & basis vectors under a 2x2 matrix; `manim say "apply a shear to the grid"`. |
 | LaTeX / `Tex` / `MathTex` typesetting | **Planned** | Text uses a built-in 8×8 bitmap font; no LaTeX yet. |
 | `ValueTracker` + updaters (per-frame recompute) | **Supported** | `Scene::play_updaters` / `play_updater` drive per-frame closures (a dot tracing a curve, value-driven labels); plus `Scene::indicate`. |
 | Moving / zooming camera | **Planned** | `Camera` renders a fixed frame; no animated camera moves yet. |
@@ -197,9 +197,9 @@ prelude and the README):
 **Honest summary:** manim-nano already covers the day-to-day Manim core — the scene loop, the
 shapes, the draw-on and fade animations, transform/grow, the easing curves, the dark palette,
 and now `Axes` + `plot` graphing, calculus visuals (Riemann rectangles, area under a curve,
-tangent lines), and updater-driven dynamic animation (a dot tracing a curve). It does **not**
-yet have LaTeX/`MathTex`, 3D, matrix transforms of a grid, or a moving camera — those are
-**Planned**. In exchange it adds three things classic Manim does not ship: zero-dependency
+tangent lines), updater-driven dynamic animation (a dot tracing a curve), and linear
+transformations of a grid (the "Essence of Linear Algebra" effect). It does **not** yet have
+LaTeX/`MathTex`, 3D, or a moving camera — those are **Planned**. In exchange it adds three things classic Manim does not ship: zero-dependency
 GIF/PNG/HTML output, a WebAssembly build, and a natural-language frontend.
 
 ---

@@ -125,6 +125,7 @@ The natural-language frontend is a deterministic, offline parser. Call it from t
 - **Rotate / spin / turn** — optionally **N degrees**, optionally `counterclockwise`.
 - **Make / turn / color it `<color>`** to recolor.
 - **Plot / graph** a function — `sine` (`wave`), `cosine`, `tangent`, `parabola` (`quadratic`), `cubic`, or `exponential` — drawn on labeled axes with a faint grid (the 3Blue1Brown-style graph). Add a color word to recolor the curve, or add **`area`** / **`riemann`** to overlay the area under the curve or Riemann rectangles (e.g. `graph a parabola with riemann rectangles`). For richer calculus and dynamic (dot-tracing) scenes, see `examples/calculus.rs` and `examples/dynamics.rs`.
+- **Apply a matrix / shear / linear transformation to the grid / plane** — animates a coordinate grid and basis vectors (î green, ĵ red) under a 2×2 matrix. Recognizes `shear`, `rotation` (with degrees), `reflection` (`flip`), `scale`/`stretch`, and `squish` (the "Essence of Linear Algebra" effect).
 - **Wait N** (or `pause N`) to hold for N seconds.
 
 **Connectors:**
