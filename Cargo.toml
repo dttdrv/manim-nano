@@ -1,0 +1,30 @@
+[package]
+name = "manim-nano"
+version = "0.1.0"
+edition = "2021"
+description = "A tiny, fast, runs-everywhere animation engine inspired by 3Blue1Brown's Manim — with a natural-language frontend."
+license = "MIT"
+repository = "https://github.com/dttdrv/manim-nano"
+readme = "README.md"
+keywords = ["animation", "manim", "math", "wasm", "graphics"]
+categories = ["multimedia", "graphics", "wasm"]
+
+[lib]
+name = "manim_nano"
+path = "src/lib.rs"
+
+[[bin]]
+name = "manim"
+path = "src/main.rs"
+
+# Everything is free and offline — no network, no API clients, no telemetry.
+[dependencies]
+tiny-skia = "0.11"   # pure-Rust CPU rasterizer (compiles to native + WASM)
+gif = "0.13"         # animated GIF output that plays everywhere
+font8x8 = "0.3"      # embedded bitmap font so text needs no system fonts
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
