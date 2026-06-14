@@ -6,7 +6,7 @@
 //! - `"Plot a sine wave"` / `"Graph a parabola"`
 
 use crate::animation::*;
-use crate::color::{Color, BLUE, WHITE};
+use crate::color::{Color, BLUE, GREEN, WHITE};
 use crate::coordinate::{Axes, Range};
 use crate::geometry::{Rate, Vec2, DOWN, F, LEFT, ORIGIN, RIGHT, UP};
 use crate::mobject::Mobject;
@@ -472,19 +472,40 @@ fn try_graph(
     let (f, x, y) = pick_function(words);
     let ax = Axes::new(x, y).lengths(11.0, 6.0).centered_at(ORIGIN);
 
+    let mut specs = Vec::new();
     let grid = scene.add(ax.grid_mobject());
+    let labels = scene.add(ax.number_labels());
     let axes_id = scene.add(ax.axes_mobject());
+    specs.push(create(grid));
+    specs.push(create(labels));
+    specs.push(create(axes_id));
+    ctx.created += 3;
+
+    // Calculus extras, layered beneath the curve so it draws on top.
+    let a = 0.0_f64.clamp(x.min, x.max);
+    let b = (x.max * 0.6).clamp(x.min, x.max);
+    if has(words, &["area"]) {
+        let area = scene.add(ax.area_under(f, a, b, BLUE));
+        specs.push(create(area));
+        ctx.created += 1;
+    }
+    if has(words, &["riemann", "rectangles"]) {
+        let rects = scene.add(ax.riemann_rectangles(f, a, b, 12, GREEN));
+        specs.push(create(rects));
+        ctx.created += 1;
+    }
+
     let mut curve = ax.plot(f);
     if let Some(c) = find_color(words) {
         curve.set_color(c);
     }
     let curve_id = scene.add(curve);
-
-    ctx.created += 3;
+    specs.push(create(curve_id));
+    ctx.created += 1;
     ctx.last = Some(curve_id);
     ctx.last_center = ax.center;
 
-    Some(vec![create(grid), create(axes_id), create(curve_id)])
+    Some(specs)
 }
 
 #[cfg(test)]

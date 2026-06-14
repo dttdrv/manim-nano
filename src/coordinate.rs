@@ -84,10 +84,10 @@ impl Axes {
     }
 
     fn x_axis_data_y(&self) -> F {
-        0.0_f64.clamp(self.y.min, self.y.max)
+        safe_clamp(0.0, self.y.min, self.y.max)
     }
     fn y_axis_data_x(&self) -> F {
-        0.0_f64.clamp(self.x.min, self.x.max)
+        safe_clamp(0.0, self.x.min, self.x.max)
     }
 
     /// The axes themselves: two lines with tick marks.
@@ -201,6 +201,144 @@ impl Axes {
     }
 }
 
+impl Axes {
+    /// The world-space point on the graph of `f` at data `x`.
+    pub fn point_at_x<G: Fn(F) -> F>(&self, f: G, x: F) -> Vec2 {
+        self.coords_to_point(x, f(x))
+    }
+
+    /// A short tangent line to `f` at data `x` (slope via finite differences).
+    pub fn tangent_line<G: Fn(F) -> F>(&self, f: G, x: F, half_len: F) -> Mobject {
+        let h = 1e-4;
+        let slope = (f(x + h) - f(x - h)) / (2.0 * h);
+        let y = f(x);
+        let mut m = if slope.is_finite() && y.is_finite() {
+            let a = self.coords_to_point(x - half_len, y - slope * half_len);
+            let b = self.coords_to_point(x + half_len, y + slope * half_len);
+            Mobject::from_subpaths(vec![SubPath::open(vec![a, b])])
+        } else {
+            // Undefined/asymptotic slope: emit no geometry rather than NaN points.
+            Mobject::from_subpaths(Vec::new())
+        };
+        m.set_stroke(color::RED, 0.04);
+        m
+    }
+
+    /// Riemann rectangles approximating the area under `f` on `[x0, x1]`
+    /// (midpoint rule). The classic calculus visualization.
+    pub fn riemann_rectangles<G: Fn(F) -> F>(
+        &self,
+        f: G,
+        x0: F,
+        x1: F,
+        n: usize,
+        fill: Color,
+    ) -> Mobject {
+        let n = n.max(1);
+        let baseline = safe_clamp(0.0, self.y.min, self.y.max);
+        let dx = (x1 - x0) / n as F;
+        let mut paths = Vec::new();
+        for i in 0..n {
+            let xl = x0 + i as F * dx;
+            let xr = xl + dx;
+            let xm = xl + dx * 0.5;
+            let h = f(xm);
+            if !h.is_finite() {
+                continue;
+            }
+            let top = safe_clamp(h, self.y.min, self.y.max);
+            paths.push(SubPath::closed(vec![
+                self.coords_to_point(xl, baseline),
+                self.coords_to_point(xr, baseline),
+                self.coords_to_point(xr, top),
+                self.coords_to_point(xl, top),
+            ]));
+        }
+        if paths.is_empty() {
+            paths.push(SubPath::closed(vec![self.center, self.center, self.center]));
+        }
+        let mut m = Mobject::from_subpaths(paths);
+        m.set_fill(fill.with_opacity(0.45));
+        m.set_stroke(fill, 0.02);
+        m
+    }
+
+    /// The filled region under `f` between `x0` and `x1` (signed, relative to
+    /// the axis baseline).
+    pub fn area_under<G: Fn(F) -> F>(&self, f: G, x0: F, x1: F, fill: Color) -> Mobject {
+        let baseline = safe_clamp(0.0, self.y.min, self.y.max);
+        let samples = 240usize;
+        let mut pts = Vec::new();
+        for i in 0..=samples {
+            let x = x0 + (x1 - x0) * i as F / samples as F;
+            let y = f(x);
+            if y.is_finite() {
+                pts.push(self.coords_to_point(x, safe_clamp(y, self.y.min, self.y.max)));
+            }
+        }
+        pts.push(self.coords_to_point(x1, baseline));
+        pts.push(self.coords_to_point(x0, baseline));
+        if pts.len() < 3 {
+            pts = vec![self.center, self.center, self.center];
+        }
+        let mut m = Mobject::from_subpaths(vec![SubPath::closed(pts)]);
+        m.set_fill(fill.with_opacity(0.4));
+        m.set_stroke(fill, 0.02);
+        m
+    }
+
+    /// Numeric tick labels along both axes (the origin label is omitted to keep
+    /// it uncluttered). Returns one merged, axis-colored mobject.
+    pub fn number_labels(&self) -> Mobject {
+        let ay = self.x_axis_data_y();
+        let ax = self.y_axis_data_x();
+        let size = self.x_length.min(self.y_length) * 0.04 + 0.18;
+        let mut labels = Vec::new();
+        for value in steps(self.x) {
+            if value.abs() < 1e-9 {
+                continue;
+            }
+            let p = self.coords_to_point(value, ay);
+            let mut t = Mobject::text(&fmt_num(value), size);
+            t.set_fill(self.color);
+            t.move_to(Vec2::new(p.x, p.y - size * 1.2));
+            labels.push(t);
+        }
+        for value in steps(self.y) {
+            if value.abs() < 1e-9 {
+                continue;
+            }
+            let p = self.coords_to_point(ax, value);
+            let mut t = Mobject::text(&fmt_num(value), size);
+            t.set_fill(self.color);
+            t.move_to(Vec2::new(p.x - size * 1.6, p.y));
+            labels.push(t);
+        }
+        if labels.is_empty() {
+            return Mobject::from_subpaths(Vec::new());
+        }
+        Mobject::merged(labels)
+    }
+}
+
+/// `f64::clamp` panics if `min > max`; this tolerates inverted bounds.
+fn safe_clamp(v: F, a: F, b: F) -> F {
+    if a <= b {
+        v.clamp(a, b)
+    } else {
+        v.clamp(b, a)
+    }
+}
+
+/// Format a tick value compactly (integers without a decimal point).
+fn fmt_num(v: F) -> String {
+    if (v - v.round()).abs() < 1e-6 {
+        format!("{}", v.round() as i64)
+    } else {
+        format!("{v:.1}")
+    }
+}
+
 /// Iterate the tick values of a range (inclusive), guarding against bad steps.
 fn steps(r: Range) -> Vec<F> {
     let mut out = Vec::new();
@@ -256,5 +394,33 @@ mod tests {
         let ax = Axes::default_axes();
         assert!(!ax.axes_mobject().paths.is_empty());
         assert!(!ax.grid_mobject().paths.is_empty());
+    }
+
+    #[test]
+    fn riemann_and_area_build() {
+        let pi = std::f64::consts::PI;
+        let ax = Axes::new(Range::new(0.0, pi, 1.0), Range::new(0.0, 1.2, 0.5));
+        let rects = ax.riemann_rectangles(|x| x.sin(), 0.0, pi, 10, color::GREEN);
+        assert_eq!(rects.paths.len(), 10);
+        let area = ax.area_under(|x| x.sin(), 0.0, pi, color::BLUE);
+        assert!(area.style.fill.is_some());
+    }
+
+    #[test]
+    fn number_labels_and_tangent_build() {
+        let ax = Axes::default_axes();
+        let labels = ax.number_labels();
+        assert!(!labels.paths.is_empty()); // ticks at -5..5, -3..3 minus origin
+        let tan = ax.tangent_line(|x| x * x, 1.0, 1.0);
+        assert!(tan.total_length() > 0.0);
+    }
+
+    #[test]
+    fn inverted_range_does_not_panic() {
+        // Defensive: a user could pass min > max; we must not panic.
+        let ax = Axes::new(Range::new(5.0, -5.0, 1.0), Range::new(3.0, -3.0, 1.0));
+        let _ = ax.axes_mobject();
+        let _ = ax.riemann_rectangles(|x| x, -5.0, 5.0, 5, color::RED);
+        let _ = ax.area_under(|x| x, -5.0, 5.0, color::RED);
     }
 }

@@ -182,10 +182,12 @@ prelude and the README):
 | `Transform` morphing | **Partial** | `transform` morphs via polyline interpolation between shapes; no point-matching `TransformMatchingTex`. |
 | Smooth `rate_functions` / easing | **Supported** | `Rate`: `Linear`, `Smooth`, `RushInto`, `RushFrom`, `ThereAndBack`. |
 | Signature dark background + named palette | **Supported** | `DARK_BG` plus Manim-style names (`RED`, `BLUE`, `YELLOW`, …) and hex. |
-| `Axes` + graphing `f(x)` (`get_graph`/`plot`) | **Supported** | Axes + `plot(function)` for graphing (being added now). |
-| `NumberPlane` grid + matrix transforms | **Planned** | Grid mobject and `apply_matrix` not yet present. |
+| `Axes` + graphing `f(x)` (`get_graph`/`plot`) | **Supported** | `Axes` with `coords_to_point`, `plot(function)`, `plot_parametric`, and numeric tick labels. |
+| Calculus visuals (Riemann rectangles, area, tangent) | **Supported** | `Axes::riemann_rectangles`, `area_under`, `tangent_line`, `point_at_x`. |
+| `NumberPlane`-style grid | **Supported** | `Axes::grid_mobject()` draws the faint coordinate grid. |
+| Matrix / linear transforms of a grid | **Planned** | `apply_matrix` not yet present. |
 | LaTeX / `Tex` / `MathTex` typesetting | **Planned** | Text uses a built-in 8×8 bitmap font; no LaTeX yet. |
-| `ValueTracker` + updaters (per-frame recompute) | **Planned** | Animations are declarative specs; no true updaters/`ValueTracker` yet. |
+| `ValueTracker` + updaters (per-frame recompute) | **Supported** | `Scene::play_updaters` / `play_updater` drive per-frame closures (a dot tracing a curve, value-driven labels); plus `Scene::indicate`. |
 | Moving / zooming camera | **Planned** | `Camera` renders a fixed frame; no animated camera moves yet. |
 | 3D scenes / surfaces | **Planned** | Engine is 2D only (y points up, like Manim's frame). |
 | Output you can play anywhere | **Supported (and a manim-nano strength)** | Looping GIF, PNG frames, and a standalone HTML player — no FFmpeg required. |
@@ -194,8 +196,9 @@ prelude and the README):
 
 **Honest summary:** manim-nano already covers the day-to-day Manim core — the scene loop, the
 shapes, the draw-on and fade animations, transform/grow, the easing curves, the dark palette,
-and now `Axes` + `plot` for graphing. It does **not** yet have LaTeX/`MathTex`, 3D,
-`NumberPlane` matrix transforms, true updaters/`ValueTracker`, or a moving camera — those are
+and now `Axes` + `plot` graphing, calculus visuals (Riemann rectangles, area under a curve,
+tangent lines), and updater-driven dynamic animation (a dot tracing a curve). It does **not**
+yet have LaTeX/`MathTex`, 3D, matrix transforms of a grid, or a moving camera — those are
 **Planned**. In exchange it adds three things classic Manim does not ship: zero-dependency
 GIF/PNG/HTML output, a WebAssembly build, and a natural-language frontend.
 

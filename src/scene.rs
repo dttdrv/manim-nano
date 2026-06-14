@@ -12,6 +12,10 @@ use std::io;
 use std::path::Path;
 use tiny_skia::Pixmap;
 
+/// A per-frame updater closure: maps the eased fraction `alpha in [0, 1]` to a
+/// mobject's state for that frame. The basis of dynamic animations.
+pub type Updater = Box<dyn Fn(F) -> Mobject>;
+
 pub struct Scene {
     pub cam: Camera,
     pub bg: Color,
@@ -136,6 +140,58 @@ impl Scene {
             let pm = self.render_frame(&empty);
             self.frames.push(pm);
         }
+    }
+
+    /// Drive one or more mobjects with **per-frame updater closures** — the
+    /// general mechanism behind dynamic animations (a dot tracing a curve, a
+    /// value-driven label, a growing trail). Each closure maps the eased
+    /// fraction `alpha in [0, 1]` to that object's state for the frame.
+    ///
+    /// This is `manim-nano`'s analogue of Manim's `ValueTracker` + updaters.
+    pub fn play_updaters(&mut self, run_time: F, rate: Rate, updates: Vec<(Id, Updater)>) {
+        let n = ((run_time * self.fps as F).round() as usize).max(1);
+        for frame in 1..=n {
+            let alpha = rate.apply(frame as F / n as F);
+            let mut overrides: HashMap<Id, Mobject> = HashMap::new();
+            for (id, f) in &updates {
+                overrides.insert(*id, f(alpha));
+            }
+            let pm = self.render_frame(&overrides);
+            self.frames.push(pm);
+        }
+        // Settle each object at the final eased value (correct for ping-pong
+        // rates like `ThereAndBack`, which end back at the start).
+        let final_alpha = rate.apply(1.0);
+        for (id, f) in &updates {
+            if let Some(slot) = self.items.get_mut(*id) {
+                *slot = Some(f(final_alpha));
+            }
+        }
+    }
+
+    /// Drive a single mobject with an updater closure (see [`Scene::play_updaters`]).
+    pub fn play_updater(
+        &mut self,
+        id: Id,
+        run_time: F,
+        rate: Rate,
+        updater: impl Fn(F) -> Mobject + 'static,
+    ) {
+        self.play_updaters(run_time, rate, vec![(id, Box::new(updater))]);
+    }
+
+    /// Briefly pulse an object's size to draw attention to it (Manim's
+    /// `Indicate`). Ends at the original size.
+    pub fn indicate(&mut self, id: Id, run_time: F) {
+        let Some(start) = self.get(id).cloned() else {
+            return;
+        };
+        self.play_updater(id, run_time, Rate::ThereAndBack, move |a| {
+            let mut m = start.clone();
+            let about = m.center();
+            m.scale_about(1.0 + 0.3 * a, about);
+            m
+        });
     }
 
     fn render_frame(&self, overrides: &HashMap<Id, Mobject>) -> Pixmap {

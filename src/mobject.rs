@@ -91,6 +91,21 @@ impl Mobject {
         Self::from_paths(paths)
     }
 
+    /// Merge several mobjects into one by concatenating their subpaths. The
+    /// merged object takes the **first** mobject's style, so this is a
+    /// lightweight "group" for objects that share styling (axis labels, ticks,
+    /// a set of same-colored marks). Empty input yields an empty mobject.
+    pub fn merged(mobs: Vec<Mobject>) -> Self {
+        let style = mobs.first().map(|m| m.style).unwrap_or_default();
+        let mut paths = Vec::new();
+        for m in mobs {
+            paths.extend(m.paths);
+        }
+        let mut out = Self::from_paths(paths);
+        out.style = style;
+        out
+    }
+
     // ---- Constructors ---------------------------------------------------
 
     /// A circle of the given radius, centered at the origin (outline only).
